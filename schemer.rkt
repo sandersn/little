@@ -182,10 +182,27 @@
     (match set1
         ['() #t]
         [(cons a s1) (and (member? a set2) (subset? s1 set2))]))
-(subset? '()'())
-(subset? '(a) '())
-(subset? '(a) '(a))
-(subset? '(a) '(a b))
+; (subset? '()'())
+; (subset? '(a) '())
+; (subset? '(a) '(a))
+; (subset? '(a) '(a b))
 (: eqset? (-> (Listof Symbol) (Listof Symbol) Boolean))
 (define (eqset? set1 set2)
     (and (subset? set1 set2) (subset? set2 set1)))
+(: intersect (-> (Listof Symbol) (Listof Symbol) (Listof Symbol)))
+(define (intersect set1 set2)
+    (match set1
+        ['() '()]
+        [(cons a s1) #:when (member? a set2) (cons a (intersect s1 set2))]
+        [(cons _ s1) (intersect s1 set2)]))
+(: intersectall (-> (Listof (Listof Symbol)) (Listof Symbol)))
+(define (intersectall l)
+    ;(foldl intersect (car l) (cdr l)) also works
+    (match l
+        [(cons s '()) s]
+        [(cons s l) (intersect s (intersectall l))]))
+(intersect '(a) '(b))
+(intersect '() '(a))
+(intersect '(a b) '(b c))
+(intersect '(a b) '(b a))
+(intersectall '((a b) (b c) (a b c) (t b a)))
