@@ -35,7 +35,7 @@
       ((pair? v) (reify-s (cdr v) (reify-s (car v) s)))
       (else s))))
 (define (reify-name n)
-  (string->symbol (string-append "-" "." (number->string n))))
+  (string->symbol (string-append "_" "." (number->string n))))
 (define-syntax case-inf
   (syntax-rules ()
     ((_ e on-zero ((a^) on-one) ((a f) on-choice))
@@ -80,7 +80,7 @@
       ((var? w) (ext-s w v s))
       ((and (pair? v) (pair? w))
        (cond
-         ((unify (car v) (car w)) => (lambda (s) (unify (cdr v) (cdr w) s)))
+         ((unify (car v) (car w) s) => (lambda (s) (unify (cdr v) (cdr w) s)))
          (else #f)))
       ((equal? v w) s)
       (else #f))))
@@ -90,7 +90,6 @@
      (lambda (s)
        (let ((x (var 'x)) ...)
          ((all g ...) s))))))
-;; TODO: One of conde, cond-aux or ife is transcribed incorrectly
 (define-syntax conde
   (syntax-rules ()
     ((_ c ...) (cond-aux ife c ...))))
@@ -129,4 +128,19 @@
     (mzero)
     ((a) (g a))
     ((a f) (mplus (g a) (lambda () (bind (f) g))))))
-(run #f (q) fail)
+
+(define (conso a d p)
+  (== (cons a d) p))
+(define (caro a p)
+  (fresh (d)
+    ; (== (car p) a)))
+    (conso a d p)))
+(define (cdro d p)
+  (fresh (a)
+    (conso a d p)))
+(define (pairo p)
+  (fresh (a d)
+    (conso a d p)))
+(define (nullo p)
+  (== '() p))
+(run #f (q) (conso 1 '(2) q))
