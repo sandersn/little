@@ -1,11 +1,14 @@
 #lang typed/racket
+; nb (require minikanren) should provide all this code
 (define var vector)
 (define var? vector?)
 (define-type (Tree a) (Listof (U a (Tree a))))
 (define-type Var (Vector Symbol))
-(define-type Str (U #f Subst (-> Any))) ; TODO: ????
+; TODO: Documentation makes it look like Str is supposed to be a stream of substitutions, not
+; a stream of actual results -- which I currently fake with (U Symbol {Tree Symbol))
+(define-type Str (U #f Subst (Pair Subst (-> Str))))
 (define-type Goal (-> Subst Str))
-(define-type Subst (Listof (Pair Var Var)))
+(define-type Subst (Listof (Pair Var (U Var Symbol (Tree Symbol)))))
 (define lhs car)
 (define rhs cdr)
 (define empty-s '())
@@ -20,23 +23,26 @@
         ((_ n^ (x) g ...)
          (let ((n n^) (x (var 'x)))
            (if (or (not n) (> n 0))
+         ; (: map-inf ((U #f Number) (-> Subst Symbol) Str -> (Listof Symbol)))
+         ; (: reify (Var -> (U Symbol (Tree Symbol))))
+         ; (: walk* (-> Var Subst (U Symbol (Tree Symbol))))
              (map-inf n (lambda ([s : Subst]) (reify (walk* x s))) ((all g ...) empty-s))
              '())))))
-(: walk* (-> Var Subst Var))
+(: walk* (-> (U Var Symbol (Tree Symbol)) Subst (U Var Symbol (Tree Symbol))))
 (define (walk* v s)
   (let ((v (walk v s)))
     (cond
       ((var? v) v)
       ((pair? v) (cons (walk* (car v) s) (walk* (cdr v) s)))
       (else v))))
-(: walk (-> Var Subst (U Var)))
+(: walk ((U Var Symbol (Tree Symbol)) Subst -> (U Var Symbol (Tree Symbol))))
 (define (walk v s)
   (cond
     ((var? v) (cond
                 ((assq v s) => (lambda (a) (walk (rhs a) s)))
                 (else v)))
     (else v)))
-(: reify (-> Var Var))
+(: reify (Var -> (U Symbol (Tree Symbol))))
 (define (reify v)
   (walk* v (reify-s v empty-s)))
 (: reify-s (-> Var Subst Subst))
@@ -69,7 +75,7 @@
 (define-syntax choice
   (syntax-rules ()
     ((_ a f) (cons a f))))
-(: map-inf (-> (U #f Number) (-> Subst Symbol) Subst (Listof Symbol)))
+(: map-inf ((U #f Number) (-> Subst Symbol) Str -> (Listof Symbol)))
 (define (map-inf n p a-inf)
     (case-inf a-inf
       '()
@@ -136,6 +142,7 @@
        (let ((g^ g0))
          (lambda (s)
            (bnd (g^ s) (lambda (s) ((all-aux bnd g ...) s))))))))
+(: mplus (-> Str (-> Str) Str))
 (define (mplus a-inf f)
   (case-inf a-inf
     (f)
