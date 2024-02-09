@@ -35,3 +35,15 @@
         (if (scalar? t)
             acc
             (loop (cons (tlen t) acc) (tref t 0)))))
+
+(define (sum-1 tensor)
+  (let loop ((i (sub1 (tlen tensor))) (acc 0))
+    (if (zero? i)
+      (+ acc (tref tensor 0))
+      (loop (sub1 i) (+ acc (tref tensor i))))))
+(define (l2-loss target)
+  (lambda (xs ys)
+    (lambda (theta)
+      (let ((pred-ys ((target xs) theta)))
+      ; TODO: sqr and - need to be lifted to tensor application
+        (sum-1 (sqr (- ys pred-ys)))))))
