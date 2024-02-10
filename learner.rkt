@@ -18,10 +18,36 @@
 (define (trefs t b)
   (list->vector (map (lambda (i) (ref t i)) b)))
 (define refr drop)
-(refr '(1 2 3 4) 2)
+
+(define (tensor-lift f)
+  (define (tensor-apply x y)
+    (cond
+      ((and (scalar? x) (scalar? y)) (f x y))
+      ((scalar? x) (vector-map (lambda (y) (tensor-apply x y)) y))
+      ((scalar? y) (vector-map (lambda (x) (tensor-apply x y)) x))
+      ((and (tensor? x) (tensor? y)) (vector-map tensor-apply x y))))
+  tensor-apply)
+(define (tensor-lift1 f)
+  (define (tensor-apply x)
+    (if (scalar? x)
+      (f x)
+      (vector-map tensor-apply x)))
+  tensor-apply)
+(define (tensor-lift2 f)
+  (define (tensor-apply x)
+    (cond
+      ((scalar? x) x) ; but is actually not supposed to happen
+      ((scalar? (tref x 0)) (f x))
+      (else (vector-map tensor-apply x))))
+  tensor-apply)
+(define +-* (tensor-lift +))
+(define --* (tensor-lift -))
+(define *-* (tensor-lift *))
+(define sqr-* (tensor-lift1 sqr))
+(define sum (tensor-lift2 sum-1))
 
 (define (line x)
-    (lambda (theta) (+ (* (ref theta 0) x) (ref theta 1))))
+    (lambda (theta) (+-* (*-* (ref theta 0) x) (ref theta 1))))
 (define line-xs (tensor 2.0 1.0 4.0 3.0))
 (define line-ys (tensor 1.8 1.2 4.2 3.3))
 
@@ -45,5 +71,9 @@
   (lambda (xs ys)
     (lambda (theta)
       (let ((pred-ys ((target xs) theta)))
-      ; TODO: sqr and - need to be lifted to tensor application
-        (sum-1 (sqr (- ys pred-ys)))))))
+        (sum-1 (sqr-* (--* ys pred-ys)))))))
+
+(define (revise f revs theta)
+  (cond
+    ((zero? revs) theta)
+    (else (revise f (sub1 revs) (f theta)))))
